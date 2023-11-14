@@ -1,2 +1,0 @@
-# Maple_LCM_Dist_Chrono
-BEST SAT SOLVER EVER 2019
