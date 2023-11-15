@@ -1,5 +1,5 @@
 EXEC      = glucose
 DEPDIR    = mtl utils
-MROOT     = ..
+MROOT     = ../
 
 include $(MROOT)/mtl/template.mk

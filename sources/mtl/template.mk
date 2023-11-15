@@ -27,6 +27,12 @@ COPTIMIZE ?= -O3
 CFLAGS    += -I$(MROOT) -D __STDC_LIMIT_MACROS -D __STDC_FORMAT_MACROS
 LFLAGS    += -lz
 
+# CFLAGS - Add include directory
+CFLAGS += -I$(HIREDIS_INCLUDE_DIR)
+
+# LFLAGS - Add library directory and link against hiredis library
+LFLAGS += -L$(HIREDIS_LIB) -lhiredis
+
 .PHONY : s p d r rs clean 
 
 s:	$(EXEC)

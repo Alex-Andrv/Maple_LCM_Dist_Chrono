@@ -36,6 +36,9 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #include "mtl/Sort.h"
 #include "core/Solver.h"
+#include <string>
+#include <cstring>
+#include "redis/Redis.h"
 
 using namespace Minisat;
 
@@ -76,6 +79,10 @@ static IntOption     opt_dupl_db_init_size ("DUP-LEARNTS", "dupdb-init",  "speci
 
 static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specifies the number of propagations after which the solver switches between LRB and VSIDS(in millions).", 30, IntRange(1, INT32_MAX));
 
+static IntOption     opt_max_clause_len    ("REDIS", "max-clause-len",  "Maximum length of the cloze that we save in redis",  10, IntRange(1, 100));
+static IntOption     opt_redis_buffer      ("REDIS", "redis-buffer",    "The maximum packet length in Redis",  5000, IntRange(100, 10000));
+static IntOption     opt_redis_port        ("REDIS", "redis-port",      "Redis port",  6379, IntRange(100, 10000));
+static StringOption  opt_redis_host        ("REDIS", "redis-host",      "Redis host",  "127.0.0.1");
 //VSIDS_props_limit
 
 //=================================================================================================
@@ -168,8 +175,15 @@ Solver::Solver() :
   , DISTANCE           (true)
   , var_iLevel_inc     (1)
   , order_heap_distance(VarOrderLt(activity_distance))
-
-{}
+  , redis (*this) {
+  redis.redis_host = opt_redis_host;
+  redis.redis_port = opt_redis_port;
+  redis.redis_last_from_minisat_id = 0;
+  redis.redis_last_to_minisat_id = 0;
+  redis.redis_last_learnt_id = 0;
+  redis.redis_buffer = opt_redis_buffer;
+  redis.max_clause_len = opt_max_clause_len;
+}
 
 
 Solver::~Solver()
@@ -1348,7 +1362,7 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& ou
     //
     if (out_learnt.size() == 1)
         out_btlevel = 0;
-    else{
+    else {
         int max_i = 1;
         // Find the first literal assigned at the next-highest level:
         for (int i = 2; i < out_learnt.size(); i++)
@@ -1498,6 +1512,11 @@ void Solver::analyzeFinal(Lit p, vec<Lit>& out_conflict)
 void Solver::uncheckedEnqueue(Lit p, int level, CRef from)
 {
     assert(value(p) == l_Undef);
+
+    if (from==CRef_Undef && decisionLevel() == 0) {
+        redis.units.push(p);
+    }
+
     Var x = var(p);
     if (!VSIDS){
         picked[x] = conflicts;
@@ -1684,7 +1703,6 @@ void Solver::reduceDB()
                 learnts_local[j++] = learnts_local[i]; }
     }
     learnts_local.shrink(i - j);
-
     checkGarbage();
 }
 void Solver::reduceDB_Tier2()
@@ -1980,7 +1998,9 @@ lbool Solver::search(int& nof_conflicts)
                 global_lbd_sum += (lbd > 50 ? 50 : lbd); }
 
             if (learnt_clause.size() == 1){
+                assert(decisionLevel() == 0);
                 uncheckedEnqueue(learnt_clause[0]);
+                // redis.load_clauses();
             }else{
                 CRef cr = ca.alloc(learnt_clause, true);
                 ca[cr].set_lbd(lbd);

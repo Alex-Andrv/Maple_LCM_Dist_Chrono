@@ -49,6 +49,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "mtl/Alg.h"
 #include "utils/Options.h"
 #include "core/SolverTypes.h"
+#include "redis/Redis.h"
 
 
 // duplicate learnts version
@@ -60,7 +61,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <map>
 #include <algorithm>
 // duplicate learnts version
-
 
 // Don't change the actual numbers.
 #define LOCAL 0
@@ -308,6 +308,8 @@ protected:
     uint64_t            next_T2_reduce,
     next_L_reduce;
 
+    Redis redis;
+
     ClauseAllocator     ca;
     
     // duplicate learnts version    
@@ -441,8 +443,8 @@ protected:
     }
 
     static inline void binDRUP_flush(FILE* drup_file){
-//        fwrite(drup_buf, sizeof(unsigned char), buf_len, drup_file);
-        fwrite_unlocked(drup_buf, sizeof(unsigned char), buf_len, drup_file);
+        fwrite(drup_buf, sizeof(unsigned char), buf_len, drup_file);
+        // fwrite_unlocked(drup_buf, sizeof(unsigned char), buf_len, drup_file);
         buf_ptr = drup_buf; buf_len = 0;
     }
 #endif
