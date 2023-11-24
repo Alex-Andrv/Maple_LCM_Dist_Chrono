@@ -2083,7 +2083,8 @@ lbool Solver::search(int& nof_conflicts)
                 redis->load_clauses();
                 return l_Undef; }
 
-
+            if (decisionLevel() == 0)
+                redis->load_clauses();
 
             // Simplify the set of problem clauses:
             if (decisionLevel() == 0 && !simplify())
