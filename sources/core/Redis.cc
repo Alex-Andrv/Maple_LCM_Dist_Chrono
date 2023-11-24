@@ -105,6 +105,8 @@ bool Redis::flush_redis() {
 
 void Redis::save_learnts() {
     if (solverRef.verbosity > 1) fprintf(stderr, "save_learnts()...\n");
+    if (learnts.size() == 0 && units.size() == 0)
+        return;
     redisContext* context = get_context();
     save_learnt_clauses(context);
     save_unit_clauses(context);
