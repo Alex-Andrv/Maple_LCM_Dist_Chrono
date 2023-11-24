@@ -6,23 +6,24 @@
 #define REDIS_H
 
 #include <hiredis.h>
+#include "core/Solver.h"
 
 namespace Minisat {
 
-struct Solver;
+class Solver;
 
 class Redis {
 public:
-    Redis(Solver& solver);
+    virtual ~Redis() = default;
+    explicit Redis(Solver& solver);
     Solver& solverRef;
     const char * redis_host;
     int redis_port;
     unsigned int redis_last_from_minisat_id;
-    unsigned int redis_last_to_minisat_id;
-    unsigned int redis_last_learnt_id;
     unsigned int redis_buffer;
     unsigned int max_clause_len;
-    vec<Lit>           units;          // List of learnt clauses.
+    vec<Lit>           units;          // List of unit in DL=0
+    vec<CRef>          learnts;        // List of learnts
 
     char* to_str(const Clause&);
     char* to_str(Lit);

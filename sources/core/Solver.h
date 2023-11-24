@@ -49,7 +49,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "mtl/Alg.h"
 #include "utils/Options.h"
 #include "core/SolverTypes.h"
-#include "redis/Redis.h"
 
 
 // duplicate learnts version
@@ -60,7 +59,9 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <set>
 #include <map>
 #include <algorithm>
+#include "core/Redis.h"
 // duplicate learnts version
+
 
 // Don't change the actual numbers.
 #define LOCAL 0
@@ -71,8 +72,10 @@ namespace Minisat {
 
 //=================================================================================================
 // Solver -- the main class:
+class Redis;
 
 class Solver {
+    friend class Redis;
 private:
     template<typename T>
     class MyQueue {
@@ -202,6 +205,7 @@ public:
     int       learntsize_adjust_start_confl;
     double    learntsize_adjust_inc;
 
+    ClauseAllocator     ca;
 
     // duplicate learnts version
     uint64_t       VSIDS_props_limit;
@@ -307,13 +311,9 @@ protected:
 
     uint64_t            next_T2_reduce,
     next_L_reduce;
-
-    Redis redis;
-
-    ClauseAllocator     ca;
     
     // duplicate learnts version    
-    std::map<int32_t,std::map<uint32_t,std::unordered_map<uint64_t,uint32_t>>>  ht;
+    std::map<uint32_t,std::map<uint32_t,std::unordered_map<uint64_t,uint32_t>>>  ht;
     uint32_t     reduceduplicates         ();         // Reduce the duplicates DB
     // duplicate learnts version
 
@@ -393,6 +393,7 @@ protected:
     ConflictData FindConflictLevel(CRef cind);
     
 public:
+    Redis *redis;
     int      level            (Var x) const;
 protected:
     double   progressEstimate ()      const; // DELETE THIS ?? IT'S NOT VERY USEFUL ...

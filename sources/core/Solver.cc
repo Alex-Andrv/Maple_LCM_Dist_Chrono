@@ -36,9 +36,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #include "mtl/Sort.h"
 #include "core/Solver.h"
-#include <string>
-#include <cstring>
-#include "redis/Redis.h"
 
 using namespace Minisat;
 
@@ -79,10 +76,6 @@ static IntOption     opt_dupl_db_init_size ("DUP-LEARNTS", "dupdb-init",  "speci
 
 static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specifies the number of propagations after which the solver switches between LRB and VSIDS(in millions).", 30, IntRange(1, INT32_MAX));
 
-static IntOption     opt_max_clause_len    ("REDIS", "max-clause-len",  "Maximum length of the cloze that we save in redis",  10, IntRange(1, 100));
-static IntOption     opt_redis_buffer      ("REDIS", "redis-buffer",    "The maximum packet length in Redis",  5000, IntRange(100, 10000));
-static IntOption     opt_redis_port        ("REDIS", "redis-port",      "Redis port",  6379, IntRange(100, 10000));
-static StringOption  opt_redis_host        ("REDIS", "redis-host",      "Redis host",  "127.0.0.1");
 //VSIDS_props_limit
 
 //=================================================================================================
@@ -175,15 +168,7 @@ Solver::Solver() :
   , DISTANCE           (true)
   , var_iLevel_inc     (1)
   , order_heap_distance(VarOrderLt(activity_distance))
-  , redis (*this) {
-  redis.redis_host = opt_redis_host;
-  redis.redis_port = opt_redis_port;
-  redis.redis_last_from_minisat_id = 0;
-  redis.redis_last_to_minisat_id = 0;
-  redis.redis_last_learnt_id = 0;
-  redis.redis_buffer = opt_redis_buffer;
-  redis.max_clause_len = opt_max_clause_len;
-}
+{}
 
 
 Solver::~Solver()
@@ -428,7 +413,7 @@ void Solver::simplifyLearnt(Clause& c)
     CRef confl;
 
     for (i = 0, j = 0; i < c.size(); i++){
-        if (value(c[i]) == l_Undef){
+        if (value(c[i]) == l_Undef) {
             //printf("///@@@ uncheckedEnqueue:index = %d. l_Undef\n", i);
             simpleUncheckEnqueue(~c[i]);
             c[j++] = c[i];
@@ -464,7 +449,7 @@ void Solver::simplifyLearnt(Clause& c)
         }
         simpleAnalyze(confl, simp_learnt_clause, simp_reason_clause, True_confl);
 
-        if (simp_learnt_clause.size() < c.size()){
+        if (simp_learnt_clause.size() < c.size()) {
             for (i = 0; i < simp_learnt_clause.size(); i++){
                 c[i] = simp_learnt_clause[i];
             }
@@ -476,7 +461,6 @@ void Solver::simplifyLearnt(Clause& c)
 
     ////
     simplified_length_record += c.size();
-
 }
 
 bool Solver::simplifyLearnt_x(vec<CRef>& learnts_x)
@@ -638,7 +622,7 @@ bool Solver::simplifyLearnt_core()
             else{
                 detachClause(cr, true);
 
-                if (false_lit){
+                if (false_lit) {
                     for (li = lj = 0; li < c.size(); li++){
                         if (value(c[li]) != l_False){
                             c[lj++] = c[li];
@@ -717,7 +701,7 @@ bool Solver::simplifyLearnt_core()
 
 
 int Solver::is_duplicate(std::vector<uint32_t>&c){
-   auto time_point_0 = std::chrono::high_resolution_clock::now();
+    auto time_point_0 = std::chrono::high_resolution_clock::now();
     dupl_db_size++;
     int res = 0;    
     
@@ -731,7 +715,7 @@ int Solver::is_duplicate(std::vector<uint32_t>&c){
         hash ^= tmp[i] + 0x9e3779b9 + (hash << 6) + (hash>> 2);     
     }    
     
-    int32_t head = tmp[0];
+    uint32_t head = tmp[0];
     auto it0 = ht.find(head);
     if (it0 != ht.end()){
         auto it1=ht[head].find(sz);
@@ -1023,6 +1007,7 @@ bool Solver::addClause_(vec<Lit>& ps)
 
 
 void Solver::attachClause(CRef cr) {
+    redis->learnts.push(cr);
     const Clause& c = ca[cr];
     assert(c.size() > 1);
     OccLists<Lit, vec<Watcher>, WatcherDeleted>& ws = c.size() == 2 ? watches_bin : watches;
@@ -1362,7 +1347,7 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& ou
     //
     if (out_learnt.size() == 1)
         out_btlevel = 0;
-    else {
+    else{
         int max_i = 1;
         // Find the first literal assigned at the next-highest level:
         for (int i = 2; i < out_learnt.size(); i++)
@@ -1514,7 +1499,7 @@ void Solver::uncheckedEnqueue(Lit p, int level, CRef from)
     assert(value(p) == l_Undef);
 
     if (from==CRef_Undef && decisionLevel() == 0) {
-        redis.units.push(p);
+        redis->units.push(p);
     }
 
     Var x = var(p);
@@ -1688,6 +1673,9 @@ void Solver::reduceDB()
     int     i, j;
     //if (local_learnts_dirty) cleanLearnts(learnts_local, LOCAL);
     //local_learnts_dirty = false;
+    if (verbosity > 1)
+        fprintf(stderr, "Save new learnts during reduceDB\n");
+    redis->save_learnts();
 
     sort(learnts_local, reduceDB_lt(ca));
 
@@ -1708,6 +1696,9 @@ void Solver::reduceDB()
 void Solver::reduceDB_Tier2()
 {
     int i, j;
+    if (verbosity > 1)
+        fprintf(stderr, "Save new learnts during reduceDB_Tier2\n");
+    redis->save_learnts();
     for (i = j = 0; i < learnts_tier2.size(); i++){
         Clause& c = ca[learnts_tier2[i]];
         if (c.mark() == TIER2)
@@ -1717,7 +1708,7 @@ void Solver::reduceDB_Tier2()
                 //c.removable(true);
                 c.activity() = 0;
                 claBumpActivity(c);
-            }else
+            } else
                 learnts_tier2[j++] = learnts_tier2[i];
     }
     learnts_tier2.shrink(i - j);
@@ -1781,11 +1772,14 @@ bool Solver::simplify()
 
     if (nAssigns() == simpDB_assigns || (simpDB_props > 0))
         return true;
-
+    if (verbosity > 1)
+        fprintf(stderr, "Save new learnts during simlification\n");
+    redis->save_learnts();
     // Remove satisfied clauses:
     removeSatisfied(learnts_core); // Should clean core first.
     safeRemoveSatisfied(learnts_tier2, TIER2);
     safeRemoveSatisfied(learnts_local, LOCAL);
+
     if (remove_satisfied)        // Can be turned off.
         removeSatisfied(clauses);
     checkGarbage();
@@ -1944,9 +1938,14 @@ lbool Solver::search(int& nof_conflicts)
         //	clauses.size(), learnts_core.size(), learnts_tier2.size(), learnts_local.size(),
         //	learnts_core.size() + learnts_tier2.size() + learnts_local.size());
         nbSimplifyAll++;
+
+        if (verbosity > 1)
+            fprintf(stderr, "Save new learnts during simplifyAll\n");
+        redis->save_learnts();
         if (!simplifyAll()){
             return l_False;
         }
+        redis->save_learnts(); // очень долго работает simpAll есть смысл еще раз сохранить лернты
         curSimplify = (conflicts / nbconfbeforesimplify) + 1;
         nbconfbeforesimplify += incSimplify;
     }
@@ -1998,9 +1997,8 @@ lbool Solver::search(int& nof_conflicts)
                 global_lbd_sum += (lbd > 50 ? 50 : lbd); }
 
             if (learnt_clause.size() == 1){
-                assert(decisionLevel() == 0);
                 uncheckedEnqueue(learnt_clause[0]);
-                // redis.load_clauses();
+                redis->load_clauses();
             }else{
                 CRef cr = ca.alloc(learnt_clause, true);
                 ca[cr].set_lbd(lbd);
@@ -2073,12 +2071,19 @@ lbool Solver::search(int& nof_conflicts)
                 cached = true;
             }
             if (restart /*|| !withinBudget()*/){
+                if (verbosity > 1)
+                    fprintf(stderr, "Save new learnts during restart\n");
+                redis->save_learnts();
+
                 lbd_queue.clear();
                 cached = false;
                 // Reached bound on number of conflicts:
                 progress_estimate = progressEstimate();
                 cancelUntil(0);
+                redis->load_clauses();
                 return l_Undef; }
+
+
 
             // Simplify the set of problem clauses:
             if (decisionLevel() == 0 && !simplify())
