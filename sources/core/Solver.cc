@@ -1940,12 +1940,14 @@ lbool Solver::search(int& nof_conflicts)
         nbSimplifyAll++;
 
         if (verbosity > 1)
-            fprintf(stderr, "Save new learnts during simplifyAll\n");
+            fprintf(stderr, "Save new learnts before simplifyAll\n");
         redis->save_learnts();
         if (!simplifyAll()){
             return l_False;
         }
-        redis->save_learnts(); // очень долго работает simpAll есть смысл еще раз сохранить лернты
+        if (verbosity > 1)
+            fprintf(stderr, "load clauses after simplifyAll\n");
+        redis->load_clauses(); // очень долго работает simpAll есть смысл еще загрузить лернты
         curSimplify = (conflicts / nbconfbeforesimplify) + 1;
         nbconfbeforesimplify += incSimplify;
     }
@@ -1998,6 +2000,8 @@ lbool Solver::search(int& nof_conflicts)
 
             if (learnt_clause.size() == 1){
                 uncheckedEnqueue(learnt_clause[0]);
+                if (verbosity > 1)
+                    fprintf(stderr, "load clauses after assing unit\n");
                 redis->load_clauses();
             }else{
                 CRef cr = ca.alloc(learnt_clause, true);
@@ -2080,11 +2084,16 @@ lbool Solver::search(int& nof_conflicts)
                 // Reached bound on number of conflicts:
                 progress_estimate = progressEstimate();
                 cancelUntil(0);
+                if (verbosity > 1)
+                    fprintf(stderr, "load clauses bofore restart\n");
                 redis->load_clauses();
                 return l_Undef; }
 
-            if (decisionLevel() == 0)
+            if (decisionLevel() == 0) {
+                if (verbosity > 1)
+                    fprintf(stderr, "load clauses on decision level = 0\n");
                 redis->load_clauses();
+            }
 
             // Simplify the set of problem clauses:
             if (decisionLevel() == 0 && !simplify())
