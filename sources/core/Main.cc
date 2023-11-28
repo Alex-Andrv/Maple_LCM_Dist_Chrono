@@ -46,13 +46,13 @@ void printStats(Solver& solver)
 {
     double cpu_time = cpuTime();
     double mem_used = memUsedPeak();
-    printf("c restarts              : %" PRIu64 "\n", solver.starts);
-    printf("c conflicts             : %-12" PRIu64 "   (%.0f /sec)\n", solver.conflicts   , solver.conflicts   /cpu_time);
-    printf("c decisions             : %-12" PRIu64 "   (%4.2f %% random) (%.0f /sec)\n", solver.decisions, (float)solver.rnd_decisions*100 / (float)solver.decisions, solver.decisions   /cpu_time);
-    printf("c propagations          : %-12" PRIu64 "   (%.0f /sec)\n", solver.propagations, solver.propagations/cpu_time);
-    printf("c conflict literals     : %-12" PRIu64 "   (%4.2f %% deleted)\n", solver.tot_literals, (solver.max_literals - solver.tot_literals)*100 / (double)solver.max_literals);
+    fprintf(stderr, "c restarts              : %" PRIu64 "\n", solver.starts);
+    fprintf(stderr, "c conflicts             : %-12" PRIu64 "   (%.0f /sec)\n", solver.conflicts   , solver.conflicts   /cpu_time);
+    fprintf(stderr, "c decisions             : %-12" PRIu64 "   (%4.2f %% random) (%.0f /sec)\n", solver.decisions, (float)solver.rnd_decisions*100 / (float)solver.decisions, solver.decisions   /cpu_time);
+    fprintf(stderr, "c propagations          : %-12" PRIu64 "   (%.0f /sec)\n", solver.propagations, solver.propagations/cpu_time);
+    fprintf(stderr, "c conflict literals     : %-12" PRIu64 "   (%4.2f %% deleted)\n", solver.tot_literals, (solver.max_literals - solver.tot_literals)*100 / (double)solver.max_literals);
     if (mem_used != 0) printf("c Memory used           : %.2f MB\n", mem_used);
-    printf("c CPU time              : %g s\n", cpu_time);
+    fprintf(stderr, "c CPU time              : %g s\n", cpu_time);
 }
 
 
@@ -80,7 +80,7 @@ int main(int argc, char** argv)
 {
     try {
         setUsageHelp("USAGE: %s [options] <input-file> <result-output-file>\n\n  where input may be either in plain or gzipped DIMACS.\n");
-        printf("c This is COMiniSatPS.\n");
+		fprintf(stderr, "c This is COMiniSatPS.\n");
         
 #if defined(__linux__)
         fpu_control_t oldcw, newcw;
@@ -151,21 +151,21 @@ int main(int argc, char** argv)
             printf("c ERROR! Could not open file: %s\n", argc == 1 ? "<stdin>" : argv[1]), exit(1);
         
         if (S.verbosity > 0){
-            printf("c ============================[ Problem Statistics ]=============================\n");
-            printf("c |                                                                             |\n"); }
+            fprintf(stderr, "c ============================[ Problem Statistics ]=============================\n");
+            fprintf(stderr, "c |                                                                             |\n"); }
         
         parse_DIMACS(in, S);
         gzclose(in);
         FILE* res = (argc >= 3) ? fopen(argv[2], "wb") : NULL;
         
         if (S.verbosity > 0){
-            printf("c |  Number of variables:  %12d                                         |\n", S.nVars());
-            printf("c |  Number of clauses:    %12d                                         |\n", S.nClauses()); }
+            fprintf(stderr, "c |  Number of variables:  %12d                                         |\n", S.nVars());
+            fprintf(stderr, "c |  Number of clauses:    %12d                                         |\n", S.nClauses()); }
         
         double parsed_time = cpuTime();
         if (S.verbosity > 0){
-            printf("c |  Parse time:           %12.2f s                                       |\n", parsed_time - initial_time);
-            printf("c |                                                                             |\n"); }
+            fprintf(stderr, "c |  Parse time:           %12.2f s                                       |\n", parsed_time - initial_time);
+            fprintf(stderr, "c |                                                                             |\n"); }
 
         // Change to signal-handlers that will only notify the solver and allow it to terminate
         // voluntarily:
@@ -175,10 +175,10 @@ int main(int argc, char** argv)
         if (!S.simplify()){
             if (res != NULL) fprintf(res, "UNSAT\n"), fclose(res);
             if (S.verbosity > 0){
-                printf("c ===============================================================================\n");
-                printf("c Solved by unit propagation\n");
+                fprintf(stderr, "c ===============================================================================\n");
+                fprintf(stderr, "c Solved by unit propagation\n");
                 printStats(S);
-                printf("\n"); }
+                fprintf(stderr, "\n"); }
             printf("s UNSATISFIABLE\n");
             exit(20);
         }
@@ -223,8 +223,8 @@ int main(int argc, char** argv)
         return (ret == l_True ? 10 : ret == l_False ? 20 : 0);
 #endif
     } catch (OutOfMemoryException&){
-        printf("c ===============================================================================\n");
-        printf("s UNKNOWN\n");
+        fprintf(stderr, "c ===============================================================================\n");
+        fprintf(stderr, "s UNKNOWN\n");
         exit(0);
     }
 }

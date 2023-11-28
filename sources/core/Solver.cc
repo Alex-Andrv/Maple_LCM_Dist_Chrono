@@ -2228,10 +2228,10 @@ lbool Solver::solve_()
     lbool   status            = l_Undef;
 
     if (verbosity >= 1){
-        printf("c ============================[ Search Statistics ]==============================\n");
-        printf("c | Conflicts |          ORIGINAL         |          LEARNT          | Progress |\n");
-        printf("c |           |    Vars  Clauses Literals |    Limit  Clauses Lit/Cl |          |\n");
-        printf("c ===============================================================================\n");
+        fprintf(stderr, "c ============================[ Search Statistics ]==============================\n");
+        fprintf(stderr, "c | Conflicts |          ORIGINAL         |          LEARNT          | Progress |\n");
+        fprintf(stderr, "c |           |    Vars  Clauses Literals |    Limit  Clauses Lit/Cl |          |\n");
+        fprintf(stderr, "c ===============================================================================\n");
     }
 
     add_tmp.clear();
@@ -2284,10 +2284,10 @@ lbool Solver::solve_()
             switch_mode = false;
             VSIDS = !VSIDS;
             if (VSIDS){
-                printf("c Switched to VSIDS.\n");
+                fprintf(stderr, "c Switched to VSIDS.\n");
             }
             else{
-               printf("c Switched to LRB.\n");
+                fprintf(stderr, "c Switched to LRB.\n");
             }
             //            reduceduplicates();            
             fflush(stdout);
