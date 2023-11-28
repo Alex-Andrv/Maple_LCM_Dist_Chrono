@@ -168,7 +168,6 @@ Solver::Solver() :
   , DISTANCE           (true)
   , var_iLevel_inc     (1)
   , order_heap_distance(VarOrderLt(activity_distance))
-
 {}
 
 
@@ -414,7 +413,7 @@ void Solver::simplifyLearnt(Clause& c)
     CRef confl;
 
     for (i = 0, j = 0; i < c.size(); i++){
-        if (value(c[i]) == l_Undef){
+        if (value(c[i]) == l_Undef) {
             //printf("///@@@ uncheckedEnqueue:index = %d. l_Undef\n", i);
             simpleUncheckEnqueue(~c[i]);
             c[j++] = c[i];
@@ -450,7 +449,7 @@ void Solver::simplifyLearnt(Clause& c)
         }
         simpleAnalyze(confl, simp_learnt_clause, simp_reason_clause, True_confl);
 
-        if (simp_learnt_clause.size() < c.size()){
+        if (simp_learnt_clause.size() < c.size()) {
             for (i = 0; i < simp_learnt_clause.size(); i++){
                 c[i] = simp_learnt_clause[i];
             }
@@ -462,7 +461,6 @@ void Solver::simplifyLearnt(Clause& c)
 
     ////
     simplified_length_record += c.size();
-
 }
 
 bool Solver::simplifyLearnt_x(vec<CRef>& learnts_x)
@@ -624,7 +622,7 @@ bool Solver::simplifyLearnt_core()
             else{
                 detachClause(cr, true);
 
-                if (false_lit){
+                if (false_lit) {
                     for (li = lj = 0; li < c.size(); li++){
                         if (value(c[li]) != l_False){
                             c[lj++] = c[li];
@@ -703,7 +701,7 @@ bool Solver::simplifyLearnt_core()
 
 
 int Solver::is_duplicate(std::vector<uint32_t>&c){
-   auto time_point_0 = std::chrono::high_resolution_clock::now();
+    auto time_point_0 = std::chrono::high_resolution_clock::now();
     dupl_db_size++;
     int res = 0;    
     
@@ -717,7 +715,7 @@ int Solver::is_duplicate(std::vector<uint32_t>&c){
         hash ^= tmp[i] + 0x9e3779b9 + (hash << 6) + (hash>> 2);     
     }    
     
-    int32_t head = tmp[0];
+    uint32_t head = tmp[0];
     auto it0 = ht.find(head);
     if (it0 != ht.end()){
         auto it1=ht[head].find(sz);
@@ -934,6 +932,7 @@ Var Solver::newVar(bool sign, bool dvar)
     vardata  .push(mkVarData(CRef_Undef, 0));
     activity_CHB  .push(0);
     activity_VSIDS.push(rnd_init_act ? drand(random_seed) * 0.00001 : 0);
+    activity_distance.push(0);
 
     picked.push(0);
     conflicted.push(0);
@@ -949,7 +948,6 @@ Var Solver::newVar(bool sign, bool dvar)
     trail    .capacity(v+1);
     setDecisionVar(v, dvar);
 
-    activity_distance.push(0);
     var_iLevel.push(0);
     var_iLevel_tmp.push(0);
     pathCs.push(0);
@@ -1009,6 +1007,7 @@ bool Solver::addClause_(vec<Lit>& ps)
 
 
 void Solver::attachClause(CRef cr) {
+    redis->learnts.push(cr);
     const Clause& c = ca[cr];
     assert(c.size() > 1);
     OccLists<Lit, vec<Watcher>, WatcherDeleted>& ws = c.size() == 2 ? watches_bin : watches;
@@ -1498,6 +1497,11 @@ void Solver::analyzeFinal(Lit p, vec<Lit>& out_conflict)
 void Solver::uncheckedEnqueue(Lit p, int level, CRef from)
 {
     assert(value(p) == l_Undef);
+
+    if (from==CRef_Undef && decisionLevel() == 0) {
+        redis->units.push(p);
+    }
+
     Var x = var(p);
     if (!VSIDS){
         picked[x] = conflicts;
@@ -1669,6 +1673,9 @@ void Solver::reduceDB()
     int     i, j;
     //if (local_learnts_dirty) cleanLearnts(learnts_local, LOCAL);
     //local_learnts_dirty = false;
+    if (verbosity > 1)
+        fprintf(stderr, "Save new learnts during reduceDB\n");
+    redis->save_learnts();
 
     sort(learnts_local, reduceDB_lt(ca));
 
@@ -1684,12 +1691,14 @@ void Solver::reduceDB()
                 learnts_local[j++] = learnts_local[i]; }
     }
     learnts_local.shrink(i - j);
-
     checkGarbage();
 }
 void Solver::reduceDB_Tier2()
 {
     int i, j;
+    if (verbosity > 1)
+        fprintf(stderr, "Save new learnts during reduceDB_Tier2\n");
+    redis->save_learnts();
     for (i = j = 0; i < learnts_tier2.size(); i++){
         Clause& c = ca[learnts_tier2[i]];
         if (c.mark() == TIER2)
@@ -1699,7 +1708,7 @@ void Solver::reduceDB_Tier2()
                 //c.removable(true);
                 c.activity() = 0;
                 claBumpActivity(c);
-            }else
+            } else
                 learnts_tier2[j++] = learnts_tier2[i];
     }
     learnts_tier2.shrink(i - j);
@@ -1763,11 +1772,14 @@ bool Solver::simplify()
 
     if (nAssigns() == simpDB_assigns || (simpDB_props > 0))
         return true;
-
+    if (verbosity > 1)
+        fprintf(stderr, "Save new learnts during simlification\n");
+    redis->save_learnts();
     // Remove satisfied clauses:
     removeSatisfied(learnts_core); // Should clean core first.
     safeRemoveSatisfied(learnts_tier2, TIER2);
     safeRemoveSatisfied(learnts_local, LOCAL);
+
     if (remove_satisfied)        // Can be turned off.
         removeSatisfied(clauses);
     checkGarbage();
@@ -1926,9 +1938,16 @@ lbool Solver::search(int& nof_conflicts)
         //	clauses.size(), learnts_core.size(), learnts_tier2.size(), learnts_local.size(),
         //	learnts_core.size() + learnts_tier2.size() + learnts_local.size());
         nbSimplifyAll++;
+
+        if (verbosity > 1)
+            fprintf(stderr, "Save new learnts before simplifyAll\n");
+        redis->save_learnts();
         if (!simplifyAll()){
             return l_False;
         }
+        if (verbosity > 1)
+            fprintf(stderr, "load clauses after simplifyAll\n");
+        redis->load_clauses(); // очень долго работает simpAll есть смысл еще загрузить лернты
         curSimplify = (conflicts / nbconfbeforesimplify) + 1;
         nbconfbeforesimplify += incSimplify;
     }
@@ -1981,6 +2000,9 @@ lbool Solver::search(int& nof_conflicts)
 
             if (learnt_clause.size() == 1){
                 uncheckedEnqueue(learnt_clause[0]);
+                if (verbosity > 1)
+                    fprintf(stderr, "load clauses after assing unit\n");
+                redis->load_clauses();
             }else{
                 CRef cr = ca.alloc(learnt_clause, true);
                 ca[cr].set_lbd(lbd);
@@ -2053,12 +2075,25 @@ lbool Solver::search(int& nof_conflicts)
                 cached = true;
             }
             if (restart /*|| !withinBudget()*/){
+                if (verbosity > 1)
+                    fprintf(stderr, "Save new learnts during restart\n");
+                redis->save_learnts();
+
                 lbd_queue.clear();
                 cached = false;
                 // Reached bound on number of conflicts:
                 progress_estimate = progressEstimate();
                 cancelUntil(0);
+                if (verbosity > 1)
+                    fprintf(stderr, "load clauses bofore restart\n");
+                redis->load_clauses();
                 return l_Undef; }
+
+            if (decisionLevel() == 0) {
+                if (verbosity > 1)
+                    fprintf(stderr, "load clauses on decision level = 0\n");
+                redis->load_clauses();
+            }
 
             // Simplify the set of problem clauses:
             if (decisionLevel() == 0 && !simplify())

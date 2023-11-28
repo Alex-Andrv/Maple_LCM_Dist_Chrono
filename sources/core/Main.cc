@@ -35,6 +35,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "utils/Options.h"
 #include "core/Dimacs.h"
 #include "core/Solver.h"
+#include "core/Redis.h"
 
 using namespace Minisat;
 
@@ -45,11 +46,11 @@ void printStats(Solver& solver)
 {
     double cpu_time = cpuTime();
     double mem_used = memUsedPeak();
-    printf("c restarts              : %"PRIu64"\n", solver.starts);
-    printf("c conflicts             : %-12"PRIu64"   (%.0f /sec)\n", solver.conflicts   , solver.conflicts   /cpu_time);
-    printf("c decisions             : %-12"PRIu64"   (%4.2f %% random) (%.0f /sec)\n", solver.decisions, (float)solver.rnd_decisions*100 / (float)solver.decisions, solver.decisions   /cpu_time);
-    printf("c propagations          : %-12"PRIu64"   (%.0f /sec)\n", solver.propagations, solver.propagations/cpu_time);
-    printf("c conflict literals     : %-12"PRIu64"   (%4.2f %% deleted)\n", solver.tot_literals, (solver.max_literals - solver.tot_literals)*100 / (double)solver.max_literals);
+    printf("c restarts              : %" PRIu64 "\n", solver.starts);
+    printf("c conflicts             : %-12" PRIu64 "   (%.0f /sec)\n", solver.conflicts   , solver.conflicts   /cpu_time);
+    printf("c decisions             : %-12" PRIu64 "   (%4.2f %% random) (%.0f /sec)\n", solver.decisions, (float)solver.rnd_decisions*100 / (float)solver.decisions, solver.decisions   /cpu_time);
+    printf("c propagations          : %-12" PRIu64 "   (%.0f /sec)\n", solver.propagations, solver.propagations/cpu_time);
+    printf("c conflict literals     : %-12" PRIu64 "   (%4.2f %% deleted)\n", solver.tot_literals, (solver.max_literals - solver.tot_literals)*100 / (double)solver.max_literals);
     if (mem_used != 0) printf("c Memory used           : %.2f MB\n", mem_used);
     printf("c CPU time              : %g s\n", cpu_time);
 }
@@ -91,11 +92,27 @@ int main(int argc, char** argv)
         IntOption    verb   ("MAIN", "verb",   "Verbosity level (0=silent, 1=some, 2=more).", 1, IntRange(0, 2));
         IntOption    cpu_lim("MAIN", "cpu-lim","Limit on CPU time allowed in seconds.\n", INT32_MAX, IntRange(0, INT32_MAX));
         IntOption    mem_lim("MAIN", "mem-lim","Limit on memory usage in megabytes.\n", INT32_MAX, IntRange(0, INT32_MAX));
+
+        IntOption     opt_max_clause_len    ("REDIS", "max-clause-len",  "Maximum length of the cloze that we save in redis",  10, IntRange(1, 100));
+        IntOption     opt_redis_buffer      ("REDIS", "redis-buffer",    "The maximum packet length in Redis",  5000, IntRange(100, 10000));
+        IntOption     opt_redis_port        ("REDIS", "redis-port",      "Redis port",  6379, IntRange(100, 10000));
+        StringOption  opt_redis_host        ("REDIS", "redis-host",      "Redis host",  "127.0.0.1");
+
         
         parseOptions(argc, argv, true);
 
         Solver S;
         double initial_time = cpuTime();
+
+        Redis redis(S);
+        redis.redis_host = opt_redis_host;
+        redis.redis_port = opt_redis_port;
+        redis.redis_last_from_minisat_id = 0;
+        redis.redis_buffer = opt_redis_buffer;
+        redis.max_clause_len = opt_max_clause_len;
+        redis.units.clear();
+        redis.learnts.clear();
+        S.redis = &redis;
 
         S.verbosity = verb;
         
@@ -154,7 +171,7 @@ int main(int argc, char** argv)
         // voluntarily:
         signal(SIGINT, SIGINT_interrupt);
         signal(SIGXCPU,SIGINT_interrupt);
-
+        S.redis->flush_redis();
         if (!S.simplify()){
             if (res != NULL) fprintf(res, "UNSAT\n"), fclose(res);
             if (S.verbosity > 0){

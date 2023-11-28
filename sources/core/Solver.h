@@ -59,6 +59,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <set>
 #include <map>
 #include <algorithm>
+#include "core/Redis.h"
 // duplicate learnts version
 
 
@@ -71,8 +72,10 @@ namespace Minisat {
 
 //=================================================================================================
 // Solver -- the main class:
+class Redis;
 
 class Solver {
+    friend class Redis;
 private:
     template<typename T>
     class MyQueue {
@@ -202,6 +205,7 @@ public:
     int       learntsize_adjust_start_confl;
     double    learntsize_adjust_inc;
 
+    ClauseAllocator     ca;
 
     // duplicate learnts version
     uint64_t       VSIDS_props_limit;
@@ -307,11 +311,9 @@ protected:
 
     uint64_t            next_T2_reduce,
     next_L_reduce;
-
-    ClauseAllocator     ca;
     
     // duplicate learnts version    
-    std::map<int32_t,std::map<uint32_t,std::unordered_map<uint64_t,uint32_t>>>  ht;
+    std::map<uint32_t,std::map<uint32_t,std::unordered_map<uint64_t,uint32_t>>>  ht;
     uint32_t     reduceduplicates         ();         // Reduce the duplicates DB
     // duplicate learnts version
 
@@ -391,6 +393,7 @@ protected:
     ConflictData FindConflictLevel(CRef cind);
     
 public:
+    Redis *redis;
     int      level            (Var x) const;
 protected:
     double   progressEstimate ()      const; // DELETE THIS ?? IT'S NOT VERY USEFUL ...
@@ -441,8 +444,8 @@ protected:
     }
 
     static inline void binDRUP_flush(FILE* drup_file){
-//        fwrite(drup_buf, sizeof(unsigned char), buf_len, drup_file);
-        fwrite_unlocked(drup_buf, sizeof(unsigned char), buf_len, drup_file);
+        fwrite(drup_buf, sizeof(unsigned char), buf_len, drup_file);
+        // fwrite_unlocked(drup_buf, sizeof(unsigned char), buf_len, drup_file);
         buf_ptr = drup_buf; buf_len = 0;
     }
 #endif
