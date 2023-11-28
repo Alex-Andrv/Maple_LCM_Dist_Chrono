@@ -2254,18 +2254,18 @@ lbool Solver::solve_()
     uint64_t curr_props = 0;
     uint32_t removed_duplicates =0;
     while (status == l_Undef /*&& withinBudget()*/){
-        if (dupl_db_size >= dupl_db_size_limit){    
-            printf("c Duplicate learnts added (Minimization) %i\n",duplicates_added_minimization);    
-            printf("c Duplicate learnts added (conflicts) %i\n",duplicates_added_conflicts);    
-            printf("c Duplicate learnts added (tier2) %i\n",duplicates_added_tier2);    
-            printf("c Duptime: %i\n",duptime.count());
-            printf("c Number of conflicts: %i\n",conflicts);
-            printf("c Core size: %i\n",learnts_core.size());
+        if (dupl_db_size >= dupl_db_size_limit){
+            fprintf(stderr,"c Duplicate learnts added (Minimization) %i\n",duplicates_added_minimization);
+            fprintf(stderr,"c Duplicate learnts added (conflicts) %i\n",duplicates_added_conflicts);
+            fprintf(stderr,"c Duplicate learnts added (tier2) %i\n",duplicates_added_tier2);
+            fprintf(stderr,"c Duptime: %i\n",duptime.count());
+            fprintf(stderr,"c Number of conflicts: %i\n",conflicts);
+            fprintf(stderr,"c Core size: %i\n",learnts_core.size());
             
             removed_duplicates = reduceduplicates();
             dupl_db_size_limit*=1.1;
             dupl_db_size -= removed_duplicates;
-            printf("c removed duplicates %i\n",removed_duplicates);
+            fprintf(stderr, "c removed duplicates %i\n",removed_duplicates);
         }   
         if (propagations - curr_props >  VSIDS_props_limit){
             curr_props = propagations;

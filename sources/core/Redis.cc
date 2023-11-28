@@ -3,6 +3,7 @@
 //
 
 #include "Redis.h"
+#include <cstring>
 
 namespace Minisat {
 
