@@ -1,2 +1,9 @@
 .idea
 .DS_Store
+/sources/core/depend.mk
+/sources/core/glucose_release
+*.or
+*.o
+*.op
+*.od
+*.or
