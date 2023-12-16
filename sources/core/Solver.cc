@@ -1947,6 +1947,7 @@ lbool Solver::search(int& nof_conflicts)
         }
         if (verbosity > 1)
             fprintf(stderr, "load clauses after simplifyAll\n");
+		fprintf(stderr, "1\n");
         redis->load_clauses(); // очень долго работает simpAll есть смысл еще загрузить лернты
         curSimplify = (conflicts / nbconfbeforesimplify) + 1;
         nbconfbeforesimplify += incSimplify;
@@ -2002,6 +2003,7 @@ lbool Solver::search(int& nof_conflicts)
                 uncheckedEnqueue(learnt_clause[0]);
                 if (verbosity > 1)
                     fprintf(stderr, "load clauses after assing unit\n");
+				fprintf(stderr, "2\n");
                 redis->load_clauses();
             }else{
                 CRef cr = ca.alloc(learnt_clause, true);
@@ -2086,13 +2088,15 @@ lbool Solver::search(int& nof_conflicts)
                 cancelUntil(0);
                 if (verbosity > 1)
                     fprintf(stderr, "load clauses bofore restart\n");
+				fprintf(stderr, "3\n");
                 redis->load_clauses();
                 return l_Undef; }
 
             if (decisionLevel() == 0) {
                 if (verbosity > 1)
                     fprintf(stderr, "load clauses on decision level = 0\n");
-                redis->load_clauses();
+                fprintf(stderr, "4\n");
+				redis->load_clauses();
             }
 
             // Simplify the set of problem clauses:
