@@ -2311,7 +2311,7 @@ lbool Solver::solve_()
     }
 
     if (verbosity >= 1)
-        printf("c ===============================================================================\n");
+        fprintf(stderr,"c ===============================================================================\n");
 
 #ifdef BIN_DRUP
     if (drup_file && status == l_False) binDRUP_flush(drup_file);

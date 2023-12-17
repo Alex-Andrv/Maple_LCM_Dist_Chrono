@@ -126,7 +126,7 @@ lbool SimpSolver::solve_(bool do_simp, bool turn_off_simp)
     if (result == l_True)
         result = Solver::solve_();
     else if (verbosity >= 1)
-        printf("c ===============================================================================\n");
+        fprintf(stderr,"c ===============================================================================\n");
 
     if (result == l_True)
         extendModel();
