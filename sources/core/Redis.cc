@@ -116,7 +116,7 @@ void Redis::save_learnts() {
 
 void Redis::load_clauses() {
     if (solverRef.decisionLevel() != 0) {
-        fprintf(stderr, "decision level mast be zero whern load clauses\n");
+        fprintf(stderr, "the decision level should be zero when the load clause\n");
         exit(3);
     }
 
