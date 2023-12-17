@@ -65,10 +65,10 @@ static void SIGINT_interrupt(int signum) { solver->interrupt(); }
 // destructors and may cause deadlocks if a malloc/free function happens to be running (these
 // functions are guarded by locks for multithreaded use).
 static void SIGINT_exit(int signum) {
-    printf("\n"); printf("c *** INTERRUPTED ***\n");
+    fprintf(stderr,"\n"); fprintf(stderr,"c *** INTERRUPTED ***\n");
     if (solver->verbosity > 0){
         printStats(*solver);
-        printf("\n"); printf("c *** INTERRUPTED ***\n"); }
+        fprintf(stderr, "\n"); fprintf(stderr, "c *** INTERRUPTED ***\n"); }
     _exit(1); }
 
 
@@ -85,7 +85,7 @@ int main(int argc, char** argv)
 #if defined(__linux__)
         fpu_control_t oldcw, newcw;
         _FPU_GETCW(oldcw); newcw = (oldcw & ~_FPU_EXTENDED) | _FPU_DOUBLE; _FPU_SETCW(newcw);
-        printf("c WARNING: for repeatability, setting FPU to use double precision\n");
+        fprintf(stderr, "c WARNING: for repeatability, setting FPU to use double precision\n");
 #endif
         // Extra options:
         //
@@ -129,7 +129,7 @@ int main(int argc, char** argv)
             if (rl.rlim_max == RLIM_INFINITY || (rlim_t)cpu_lim < rl.rlim_max){
                 rl.rlim_cur = cpu_lim;
                 if (setrlimit(RLIMIT_CPU, &rl) == -1)
-                    printf("c WARNING! Could not set resource limit: CPU-time.\n");
+                    fprintf(stderr, "c WARNING! Could not set resource limit: CPU-time.\n");
             } }
 
         // Set limit on virtual memory:
@@ -140,15 +140,15 @@ int main(int argc, char** argv)
             if (rl.rlim_max == RLIM_INFINITY || new_mem_lim < rl.rlim_max){
                 rl.rlim_cur = new_mem_lim;
                 if (setrlimit(RLIMIT_AS, &rl) == -1)
-                    printf("c WARNING! Could not set resource limit: Virtual memory.\n");
+                    fprintf(stderr, "c WARNING! Could not set resource limit: Virtual memory.\n");
             } }
         
         if (argc == 1)
-            printf("c Reading from standard input... Use '--help' for help.\n");
+            fprintf(stderr, "c Reading from standard input... Use '--help' for help.\n");
         
         gzFile in = (argc == 1) ? gzdopen(0, "rb") : gzopen(argv[1], "rb");
         if (in == NULL)
-            printf("c ERROR! Could not open file: %s\n", argc == 1 ? "<stdin>" : argv[1]), exit(1);
+            fprintf(stderr, "c ERROR! Could not open file: %s\n", argc == 1 ? "<stdin>" : argv[1]), exit(1);
         
         if (S.verbosity > 0){
             fprintf(stderr, "c ============================[ Problem Statistics ]=============================\n");
@@ -192,7 +192,7 @@ int main(int argc, char** argv)
                 check_solution_DIMACS(in, S);
                 gzclose(in);
             }
-            printf("\n"); }
+            fprintf(stderr, "\n"); }
         printf(ret == l_True ? "s SATISFIABLE\n" : ret == l_False ? "s UNSATISFIABLE\n" : "s UNKNOWN\n");
         if (ret == l_True){
             printf("v ");
