@@ -246,7 +246,6 @@ bool Redis::load_clause(redisReply* element, vec<Lit>& learnt_clause) {
 
     if (learnt_clause.size() == 1) {
         if (solverRef.verbosity > 1) fprintf(stderr, "unit\n");
-        solverRef.cancelUntil(0);
         if (solverRef.decisionLevel() != 0) {
             fprintf(stderr, "the decision level should be zero when the unit clause\n");
             exit(3);
