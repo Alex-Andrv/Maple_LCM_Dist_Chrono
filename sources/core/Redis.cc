@@ -74,7 +74,8 @@ redisContext* Redis::get_context() {
     redisContext *c = redisConnect(redis_host, redis_port);
     if (c == NULL || c->err) {
         if (c) {
-            fprintf(stderr, "Error: %s\n", c->errstr);
+            fprintf(stderr, "Error during connection: %s\n", c->errstr);
+			fprintf(stderr, "redis host: %s, port %d", redis_host, redis_port);
             exit(3);
         } else {
             fprintf(stderr, "Can't allocate redis context\n");
@@ -245,6 +246,11 @@ bool Redis::load_clause(redisReply* element, vec<Lit>& learnt_clause) {
 
     if (learnt_clause.size() == 1) {
         if (solverRef.verbosity > 1) fprintf(stderr, "unit\n");
+        solverRef.cancelUntil(0);
+        if (solverRef.decisionLevel() != 0) {
+            fprintf(stderr, "the decision level should be zero when the unit clause\n");
+            exit(3);
+        }
         if (solverRef.value(learnt_clause[0]) == l_Undef) {
             solverRef.uncheckedEnqueue(learnt_clause[0]);
             fprintf(stderr, "New useful unit: %s%d \n", sign(learnt_clause[0]) ? "-" : "", var(learnt_clause[0]) + 1);

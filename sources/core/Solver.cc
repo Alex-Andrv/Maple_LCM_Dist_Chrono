@@ -1498,8 +1498,9 @@ void Solver::uncheckedEnqueue(Lit p, int level, CRef from)
 {
     assert(value(p) == l_Undef);
 
-    if (from==CRef_Undef && decisionLevel() == 0) {
+    if ( decisionLevel() == 0) {
         redis->units.push(p);
+		//fprintf(stderr, "Unit from Mapl:%d\n", var(p) + 1);
     }
 
     Var x = var(p);
