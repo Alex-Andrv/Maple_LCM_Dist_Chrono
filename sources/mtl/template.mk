@@ -22,8 +22,8 @@ CXX       ?= g++
 CFLAGS    ?= -Wall -Wno-parentheses -std=c++11
 LFLAGS    ?= -Wall
 
-#CFLAGS    ?= -Wall -Wno-parentheses -std=c++11 -fsanitize=address
-#LFLAGS    ?= -Wall -fsanitize=address -fsanitize=address
+#CFLAGS    ?= -Wall -Wno-parentheses -std=c++11 -fsanitize=address,undefined
+#LFLAGS    ?= -Wall -fsanitize=address,undefined
 #CFLAGS    ?= -Wall -Wno-parentheses -std=c++11 -fsanitize=undefined
 #LFLAGS    ?= -Wall -fsanitize=address -fsanitize=undefined
 #CFLAGS    ?= -Wall -Wno-parentheses -std=c++11
